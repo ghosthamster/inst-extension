@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.png" width="128" height="128" alt="Inst Quick Share — paper plane with a heart"></p>
+
 # Inst · Quick Share
 
 Send the Instagram reel or post you are viewing to one saved contact with a keyboard shortcut.
@@ -6,7 +8,7 @@ Save a username once, then press **Option + Shift + S** on macOS or **Alt + Shif
 
 **Sharing starts immediately, without a confirmation prompt.** Instagram’s dialog and search can take a few seconds to finish.
 
-This is an independent, experimental project, not affiliated with Instagram or Meta. It has been tested in Brave with simulated Instagram pages; live-account delivery has not been verified by the automated tests.
+This is an independent, experimental project, not affiliated with Instagram or Meta. The maintainer has successfully tested sharing in Brave with a real Instagram account. Automated tests separately cover the sharing flow using simulated Instagram pages; they do not verify live message delivery.
 
 ## Install in Brave
 
@@ -102,4 +104,4 @@ tests/               Unit tests and isolated Brave integration tests
 
 ## License
 
-An open-source license has not yet been selected. Public repository visibility alone does not grant an open-source license.
+[MIT](LICENSE) © 2026 ghosthamster.
