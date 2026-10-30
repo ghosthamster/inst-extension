@@ -2,13 +2,13 @@
 
 # Inst · Quick Share
 
-Send the Instagram reel or post you are viewing to one saved contact with a keyboard shortcut.
+Send Instagram reels and posts to your favourite people with shortcuts, a quick contact picker, and optional messages.
 
-Save a username once, then press **Option + Shift + S** on macOS or **Alt + Shift + S** on Windows/Linux. The extension opens Instagram’s Share dialog, searches for your contact, and clicks Send. You can also share from the extension popup.
+Save up to **five contacts**, choose a default, and press **Option + Shift + S** on macOS or **Alt + Shift + S** on Windows/Linux. The extension operates Instagram’s own Share dialog. Use the picker to choose someone else, or add a message before sending.
 
-**Sharing starts immediately, without a confirmation prompt.** Instagram’s dialog and search can take a few seconds to finish.
+**Direct shortcuts and choosing a contact in the picker send immediately, without a confirmation prompt.** Instagram’s dialog and search can take a few seconds to finish.
 
-This is an independent, experimental project, not affiliated with Instagram or Meta. The maintainer has successfully tested sharing in Brave with a real Instagram account. Automated tests separately cover the sharing flow using simulated Instagram pages; they do not verify live message delivery.
+This is an independent, experimental project, not affiliated with Instagram or Meta. The maintainer has successfully tested the original direct-sharing flow in Brave with a real Instagram account. The newer picker, caption, and quiet-mode flows are covered by fixture tests but have not yet been confirmed against a live account. Automated tests separately cover the sharing flow using simulated Instagram pages; they do not verify live message delivery.
 
 ## Install in Brave
 
@@ -27,17 +27,35 @@ No build, Node.js installation, or developer account is needed to use the extens
 
 The extension is loaded locally; it is not a browser-store installation and does not update automatically. After pulling or downloading an update, click **Reload** on its card in `brave://extensions`, then reload Instagram.
 
-## Set your favourite and share
+## Set your contacts
 
 1. Click the extension’s toolbar icon.
-2. Enter an Instagram username such as `some.person`. `@some.person` and `https://www.instagram.com/some.person/` also work.
-3. Click **Save favourite**.
-4. Open the intended reel or post and press the shortcut while that Instagram tab is active.
-5. Watch the on-page status for completion or an error.
+2. Fill up to five numbered contact slots. Each accepts `some.person`, `@some.person`, or `https://www.instagram.com/some.person/`.
+3. Select the radio button beside the contact you want as your default.
+4. Click **Save contacts**. Empty a slot and save to remove it; empty all slots to clear your contacts.
 
-To change the contact, save a different username. To clear it, empty the field and save. The saved contact applies to this Brave profile, including when you switch Instagram accounts within that profile.
+Upgrading from version 1.0? Your existing favourite appears in slot 1 automatically. Contacts and the default apply to this Brave profile, even when you switch Instagram accounts.
 
-To change the shortcut, open `brave://extensions/shortcuts`. If another extension uses the default key, assign an available combination there. The popup shows the currently assigned shortcut.
+## Shortcuts and sharing
+
+| Action | macOS default | Windows/Linux default |
+| --- | --- | --- |
+| Send to default contact | Option + Shift + S | Alt + Shift + S |
+| Open contact picker | Option + Shift + P | Alt + Shift + P |
+| Add a message | Option + Shift + M | Alt + Shift + M |
+| Send directly to slots 1–5 | Assign in Brave | Assign in Brave |
+
+Open `brave://extensions/shortcuts` to change keys or assign an individual key to each **contact slot**. Slot shortcuts follow the slot number when you change its username. The popup shows the actual assignments. If a default key is already taken, assign an available combination.
+
+Brave/Chromium limits extensions to four suggested shortcuts, so individual contact shortcuts are initially unassigned. You can assign them manually. See the [Commands API documentation](https://developer.chrome.com/docs/extensions/reference/api/commands).
+
+**Quick picker:** open it while viewing a reel/post, then press **1–5** or click a contact to send. Empty slots are omitted. **Esc** or **Cancel** closes it without sending; Tab moves between buttons.
+
+**Optional message:** open the composer, choose a saved contact, type your note, and click **Send** or press **Cmd/Ctrl + Enter**. Plain Enter adds a new line. Esc cancels. An empty message shares only the reel/post. Messages are limited to 1,000 characters and drafts are not saved. If Instagram’s message field cannot be found or does not retain your text, the extension stops without sending.
+
+The popup also provides **Send to default**, **Choose contact**, and **Add message** buttons. Picker and composer open on the Instagram page and close the toolbar popup.
+
+**Quiet sharing** is enabled by default: Instagram’s Share dialog is hidden while the operation runs, with a small Sending/Sent status instead. On errors the dialog is revealed so you can inspect it. Disable Quiet sharing in the popup and save to watch the process. Existing Share dialogs are left alone; close them before retrying.
 
 ## Requirements and limitations
 
@@ -55,11 +73,11 @@ The extension has no backend, analytics, advertising, or remote executable code.
 
 | Access | Purpose |
 | --- | --- |
-| `storage` | Saves the favourite username in `chrome.storage.local` in your Brave profile; it is not synced by the extension. |
+| `storage` | Saves contact usernames, the default slot, and the quiet-mode setting in `chrome.storage.local`; the extension does not sync them. |
 | `activeTab` | Lets the toolbar action or keyboard command address the active Instagram tab. |
 | Content scripts on `https://instagram.com/*` and `https://www.instagram.com/*` | Reads visible page elements and operates Instagram’s Share dialog. No content scripts run on other sites. |
 
-The extension does not read passwords, export cookies, or store message history. Your saved username is entered into Instagram’s search box when you share, and Instagram handles the resulting message through your existing signed-in session. Clearing the favourite removes the saved value; uninstalling removes the extension’s local storage.
+The extension does not read passwords, export cookies, or store message history. The selected username is entered into Instagram’s search box when you share, and Instagram handles the resulting message through your existing signed-in session. Caption text is passed to Instagram only when you choose Send; the extension does not persist it. Clearing the contacts removes the saved usernames; uninstalling removes the extension’s local storage.
 
 ## Troubleshooting
 
@@ -90,7 +108,7 @@ The browser suite defaults to Brave’s standard macOS installation path. On ano
 BRAVE_PATH="/path/to/brave" npm run test:browser
 ```
 
-Tests use a temporary browser profile and intercept Instagram page requests with local fixtures. They cover username parsing, shortcut dispatch, popup persistence, reel selection, sharing, and failure conditions without using your real login or sending real DMs. They verify shortcut registration and message dispatch, not a physical operating-system keypress.
+Tests use a temporary browser profile and intercept Instagram page requests with local fixtures. They cover username parsing, shortcut dispatch, legacy settings, multiple contacts, shortcut routing, picker cancellation, optional messages, quiet-mode recovery, reel selection, and failure conditions without using your real login or sending real DMs. They verify shortcut registration and message dispatch, not a physical operating-system keypress.
 
 Packaging creates `dist/inst-quick-share.zip` with `manifest.json` at its root. Extract it before using **Load unpacked**. Only extension runtime files are included; tests and development dependencies are excluded.
 

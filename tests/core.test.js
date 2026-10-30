@@ -16,3 +16,11 @@ test('recipient matching accepts an exact username on either result line', () =>
   assert.equal(exactUsername({ innerText: '\n  @Some.One \nDisplay Name' }, 'some.one'), true);
   assert.equal(exactUsername({ innerText: '' }, 'some.one'), false);
 });
+test('legacy favourite migrates to slot one without losing the saved username', () => {
+  assert.deepEqual(InstCore.settingsFrom({favourite:'@Friend'}), {contacts:['friend','','','',''],defaultIndex:0,quiet:true});
+});
+test('settings preserve slot positions, chosen default and quiet preference', () => {
+  assert.deepEqual(InstCore.settingsFrom({contacts:['one','','three'],defaultIndex:2,quiet:false}), {contacts:['one','','three','',''],defaultIndex:2,quiet:false});
+  assert.equal(InstCore.settingsFrom({contacts:[],favourite:'old',defaultIndex:99}).contacts[0],'');
+  assert.equal(InstCore.settingsFrom({defaultIndex:99}).defaultIndex,0);
+});

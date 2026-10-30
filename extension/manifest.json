@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Inst · Quick Share",
-  "version": "1.0.1",
-  "description": "Send the reel or post you are viewing to one saved Instagram contact with a keyboard shortcut.",
+  "version": "1.1.0",
+  "description": "Share Instagram reels and posts to saved contacts with shortcuts, a quick picker, and optional messages.",
   "permissions": [
     "storage",
     "activeTab"
@@ -26,6 +26,7 @@
       ],
       "js": [
         "core.js",
+        "chooser.js",
         "content.js"
       ],
       "run_at": "document_idle"
@@ -38,6 +39,35 @@
         "mac": "Alt+Shift+S"
       },
       "description": "Immediately send the current reel/post to your favourite"
+    },
+    "pick-contact": {
+      "suggested_key": {
+        "default": "Alt+Shift+P",
+        "mac": "Alt+Shift+P"
+      },
+      "description": "Choose a saved contact and share"
+    },
+    "share-with-message": {
+      "suggested_key": {
+        "default": "Alt+Shift+M",
+        "mac": "Alt+Shift+M"
+      },
+      "description": "Add a message before sharing"
+    },
+    "share-contact-1": {
+      "description": "Immediately share to contact slot 1"
+    },
+    "share-contact-2": {
+      "description": "Immediately share to contact slot 2"
+    },
+    "share-contact-3": {
+      "description": "Immediately share to contact slot 3"
+    },
+    "share-contact-4": {
+      "description": "Immediately share to contact slot 4"
+    },
+    "share-contact-5": {
+      "description": "Immediately share to contact slot 5"
     }
   },
   "icons": {

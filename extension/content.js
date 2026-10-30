@@ -1,7 +1,7 @@
 (() => {
   if (globalThis.__instQuickShare) return;
   globalThis.__instQuickShare = true;
-  const { normalizeUsername, exactUsername } = InstCore;
+  const { exactUsername, settingsFrom } = InstCore;
   let busy = false;
   let toastTimer;
   let toastNode;
@@ -61,13 +61,42 @@
     return unique.sort((a, b) => Math.abs(mid(a) - target) - Math.abs(mid(b) - target))[0];
   };
   const selected = dialog => [...dialog.querySelectorAll('[role="option"][aria-selected="true"], [role="checkbox"][aria-checked="true"], input[type="checkbox"]:checked')];
-  const runShare = async username => {
+  const conceal = () => {
+    const style = document.createElement('style');
+    style.textContent = '[role="dialog"]:has(input[name="queryBox"]), [data-inst-share-dialog] { opacity: 0 !important; pointer-events: none !important; }';
+    document.documentElement.append(style);
+    return () => {
+      style.remove();
+      document.querySelectorAll('[data-inst-share-dialog]').forEach(el => el.removeAttribute('data-inst-share-dialog'));
+    };
+  };
+  const fillMessage = async (dialog, message) => {
+    if (!message) return;
+    const field = await waitFor(() => [...dialog.querySelectorAll('textarea, input:not([name="queryBox"]), [contenteditable="true"]')]
+      .find(el => visible(el) && /message|say something|add a note/i.test([el.getAttribute('placeholder'), el.getAttribute('aria-label'), el.getAttribute('data-placeholder'), el.getAttribute('name')].filter(Boolean).join(' '))), 4000);
+    if (!field) throw new Error('Could not find Instagram’s message field. Nothing sent.');
+    field.focus();
+    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+      const prototype = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(prototype, 'value').set.call(field, message);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+    } else {
+      const range = document.createRange(); range.selectNodeContents(field);
+      const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+      if (!document.execCommand('insertText', false, message)) throw new Error('Could not enter the message. Nothing sent.');
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if ((field.value ?? field.innerText).trim() !== message) throw new Error('Instagram did not retain the message. Nothing sent.');
+  };
+  const runShare = async (username, message) => {
     if (shareDialog()) throw new Error('Close the current Share dialog, then try again.');
     const button = findShareButton();
     if (!button) throw new Error('No visible reel/post Share button. Open a reel and try again (Instagram UI must be in English).');
     button.click();
     const dialog = await waitFor(shareDialog, 5000);
     if (!dialog) throw new Error('Instagram’s Share dialog did not open.');
+    dialog.setAttribute('data-inst-share-dialog', '');
     if (selected(dialog).length) throw new Error('Share already has selected recipients. Close it and try again.');
     const input = dialog.querySelector('input[name="queryBox"]');
     input.focus();
@@ -80,6 +109,7 @@
     if (!option) throw new Error(`Could not uniquely find @${username}. Nothing sent.`);
     if (!dialog.isConnected || selected(dialog).length) throw new Error('Share dialog changed. Close it and try again.');
     option.click();
+    await fillMessage(dialog, message);
     const send = await waitFor(() => {
       if (!dialog.isConnected) return null;
       const buttons = [...dialog.querySelectorAll('button, [role="button"]')].filter(el =>
@@ -95,25 +125,46 @@
       throw new Error('Instagram did not confirm completion. Check your DM before retrying.');
     }
   };
-  const share = async () => {
+  const share = async (request) => {
     if (busy) return { ok: false, error: 'A share is already in progress.' };
     busy = true;
+    let reveal = () => {};
     try {
-      const { favourite = '' } = await chrome.storage.local.get('favourite');
-      const username = normalizeUsername(favourite);
-      if (!username) throw new Error('Set your favourite username in the Inst extension popup first.');
+      const settings = settingsFrom(await chrome.storage.local.get(null));
+      if (!settings.contacts.some(Boolean)) throw new Error('Set your favourite contacts in the Inst extension popup first.');
+      let slot = request.slot ?? settings.defaultIndex;
+      let message = '';
+      if (request.type !== 'inst-share') {
+        const choice = await InstChooser.choose(settings, request.type === 'inst-compose');
+        if (!choice) return { ok: false, cancelled: true };
+        slot = choice.slot; message = choice.message;
+      }
+      if (!Number.isInteger(slot) || slot < 0 || slot >= 5 || !settings.contacts[slot]) throw new Error('This contact slot is empty. Set it in the extension popup first.');
+      const username = settings.contacts[slot];
+      // Never conceal a dialog that was already open before this request.
+      if (shareDialog()) throw new Error('Close the current Share dialog, then try again.');
+      if (settings.quiet) reveal = conceal();
       toast(`Sending to @${username}…`, 30000);
-      await runShare(username);
+      await runShare(username, message);
       toast(`Sent to @${username} ✓`);
       return { ok: true };
     } catch (error) {
       toast(error.message, 6500);
       return { ok: false, error: error.message };
-    } finally { busy = false; }
+    } finally {
+      reveal();
+      document.querySelectorAll('[data-inst-share-dialog]').forEach(el => el.removeAttribute('data-inst-share-dialog'));
+      busy = false;
+    }
   };
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (message.type !== 'inst-share') return;
-    share().then(respond);
+    if (!['inst-share', 'inst-picker', 'inst-compose'].includes(message.type)) return;
+    if (message.detached) {
+      share(message);
+      respond({ opened: true });
+      return;
+    }
+    share(message).then(respond);
     return true;
   });
   chrome.runtime.sendMessage({ type: 'inst-ready' }).catch(() => {});

@@ -24,3 +24,9 @@ test('command ignores unrelated websites and command names',async()=>{
 test('unloaded content script provides a reload badge',async()=>{
   const env=setup();env.chrome.tabs.sendMessage=async()=>{throw Error('No receiver');};await env.run('share-to-favourite');assert.deepEqual(env.badges,['↻']);
 });
+test('individual contact commands, picker and composer route correctly',async()=>{
+  const env=setup();
+  for (const command of ['share-contact-1','share-contact-5','pick-contact','share-with-message']) await env.run(command);
+  assert.deepEqual(env.sent.map(x=>[x.body.type,x.body.slot]),[['inst-share',0],['inst-share',4],['inst-picker',undefined],['inst-compose',undefined]]);
+  await env.run('share-contact-6');assert.equal(env.sent.length,4);
+});

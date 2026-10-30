@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 const profile = await mkdtemp(path.join(tmpdir(), 'inst-share-test-'));
@@ -20,7 +20,8 @@ for(const b of document.querySelectorAll('article button')) b.onclick=()=>{
  document.body.append(dialog);
  dialog.querySelector('input').oninput=e=>setTimeout(()=>{
  const results=dialog.querySelector('#results');
- const names=window.mode==='wrong' ? ['friend.fake'] : window.mode==='ambiguous' ? ['friend','friend'] : ['friend.fake','friend'];
+ const target=e.target.value;
+ const names=window.mode==='wrong' ? [target+'.fake'] : window.mode==='ambiguous' ? [target,target] : [target+'.fake',target];
  results.innerHTML='';
  for (const name of names) {
   const option=document.createElement('div');option.setAttribute('role','option');option.textContent=name;
@@ -33,8 +34,15 @@ for(const b of document.querySelectorAll('article button')) b.onclick=()=>{
   results.append(option);
   option.onclick=()=>{
    option.setAttribute('aria-selected','true');
+   if(window.mode!=='no-message'){
+    const note=document.createElement(window.mode==='editable'?'div':window.mode==='input-message'?'input':'textarea');
+    note.setAttribute('data-message','');
+    if(window.mode==='editable'){note.contentEditable='true';note.setAttribute('data-placeholder','Write a message…');note.style='min-height:30px';}
+    else note.placeholder='Write a message…';
+    dialog.append(note);
+   }
    const send=document.createElement('button');send.textContent='Send';
-   send.onclick=()=>{window.sent.push({post:b.id,username:name});dialog.remove();};
+   send.onclick=()=>{const entry={post:b.id,username:name};const field=dialog.querySelector('[data-message]');const message=field?.value??field?.innerText;if(message)entry.message=message;window.sent.push(entry);dialog.remove();};
    if(window.mode==='disabled')send.disabled=true;
    dialog.append(send);
   };
@@ -56,18 +64,23 @@ try {
   const popup = await context.newPage();
   const errors=[];
   for(const p of [page,popup])p.on('pageerror', e=>errors.push(e.message));
-  const send = () => worker.evaluate(async () => {
-    return chrome.tabs.sendMessage(globalThis.testTabId,{type:'inst-share'});
-  });
+  const send = (request={type:'inst-share'}) => worker.evaluate(async request => {
+    return chrome.tabs.sendMessage(globalThis.testTabId,request);
+  },request);
   const reset = async (mode='success') => {
     await page.goto('https://www.instagram.com/reels/test/');
     await page.waitForTimeout(150);
     await page.evaluate(mode=>{window.mode=mode;},mode);
   };
+  await worker.evaluate(()=>chrome.storage.local.set({favourite:'friend'}));
   await popup.goto(`chrome-extension://${id}/popup.html`);
+  await popup.waitForFunction(()=>document.querySelector('#favourite')?.value==='friend');
+  console.log('PASS existing favourite appears in slot one');
+  await mkdir('test-results',{recursive:true});
+  await popup.screenshot({path:'test-results/popup.png',fullPage:true});
   await popup.locator('#favourite').fill('https://www.instagram.com/Friend/');
   await popup.locator('#save').click();
-  await popup.locator('#status').filter({hasText:'Saved @friend'}).waitFor({timeout:2000});
+  await popup.locator('#status').filter({hasText:'Contacts saved'}).waitFor({timeout:2000});
   await popup.reload();
   await popup.waitForFunction(()=>document.querySelector('#favourite').value==='friend');
   assert.equal(await popup.locator('#share').textContent(),'Send to @friend');
@@ -100,11 +113,89 @@ try {
   assert.match((await send()).error,/Close the current Share dialog/);
   assert.equal(await page.evaluate(()=>window.sent.length),0);
   console.log('PASS refuses existing Share dialogs');
-  await worker.evaluate(()=>chrome.storage.local.set({favourite:''}));
+  await popup.locator('#contact-2').fill('@Buddy');
+  await popup.locator('[name="default"][value="1"]').check();
+  await popup.locator('#save').click();
+  await popup.locator('#status').filter({hasText:'Contacts saved'}).waitFor();
+  await popup.reload();
+  await popup.waitForFunction(()=>document.querySelector('#contact-2')?.value==='buddy');
+  assert.equal(await popup.locator('[name="default"][value="1"]').isChecked(),true);
+  await reset();assert.equal((await send()).ok,true);
+  assert.equal(await page.evaluate(()=>window.sent[0].username),'buddy');
+  await reset();assert.equal((await send({type:'inst-share',slot:0})).ok,true);
+  assert.equal(await page.evaluate(()=>window.sent[0].username),'friend');
+  await reset();assert.match((await send({type:'inst-share',slot:4})).error,/slot is empty/);
+  assert.equal(await page.evaluate(()=>window.opened.length),0);
+  console.log('PASS multiple contacts persist, default and slot commands select correctly');
+
+  await reset();const picking=send({type:'inst-picker'});
+  await page.locator('#inst-contact-picker').waitFor();
+  assert.equal((await send()).ok,false);
+  await page.keyboard.press('2');assert.equal((await picking).ok,true);
+  assert.equal(await page.evaluate(()=>window.sent[0].username),'buddy');
+  await reset();const cancelling=send({type:'inst-picker'});
+  await page.locator('#inst-contact-picker').waitFor();await page.keyboard.press('Escape');
+  assert.equal((await cancelling).cancelled,true);
+  assert.equal(await page.evaluate(()=>window.opened.length),0);
+  assert.equal(await page.locator('#inst-contact-picker').count(),0);
+  console.log('PASS picker number keys, concurrent protection and Escape cancellation');
+  await reset();assert.equal((await send({type:'inst-picker',detached:true})).opened,true);
+  await page.locator('#inst-contact-picker').waitFor();await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(()=>window.opened.length),0);
+  console.log('PASS popup-launched picker acknowledges immediately and stays interactive');
+
+
+  await reset();const composing=send({type:'inst-compose'});
+  await page.locator('#inst-contact-picker').waitFor();
+  await page.locator('#inst-contact-picker select').selectOption('0');
+  await page.locator('#inst-contact-picker textarea').fill('Watch this! <3');
+  await page.keyboard.press('Control+Enter');assert.equal((await composing).ok,true);
+  assert.deepEqual(await page.evaluate(()=>window.sent),[{post:'correct-post',username:'friend',message:'Watch this! <3'}]);
+  console.log('PASS composer chooses recipient and attaches the exact message');
+  await reset();const emptyCaption=send({type:'inst-compose'});
+  await page.locator('#inst-contact-picker #send').click();assert.equal((await emptyCaption).ok,true);
+  assert.deepEqual(await page.evaluate(()=>window.sent),[{post:'correct-post',username:'buddy'}]);
+  await reset();const cancelCaption=send({type:'inst-compose'});
+  await page.locator('#inst-contact-picker textarea').fill('Discard me');
+  await page.keyboard.press('Escape');assert.equal((await cancelCaption).cancelled,true);
+  assert.equal(await page.evaluate(()=>window.opened.length),0);
+  console.log('PASS empty captions share normally and cancelled drafts never send');
+  for(const mode of ['editable','input-message']){
+    await reset(mode);const alternate=send({type:'inst-compose'});
+    await page.locator('#inst-contact-picker textarea').fill('A note for you');
+    await page.locator('#inst-contact-picker #send').click();
+    const result=await alternate;assert.equal(result.ok,true,JSON.stringify(result));
+    assert.equal(await page.evaluate(()=>window.sent[0].message),'A note for you');
+  }
+  console.log('PASS caption entry supports input and contenteditable fields');
+
+
+
+  await reset('no-message');const unsupported=send({type:'inst-compose'});
+  await page.locator('#inst-contact-picker textarea').fill('Do not silently drop this');
+  await page.locator('#inst-contact-picker #send').click();
+  assert.match((await unsupported).error,/message field/);
+  assert.equal(await page.evaluate(()=>window.sent.length),0);
+  assert.equal(await page.locator('[role="dialog"]').evaluate(el=>getComputedStyle(el).opacity),'1');
+  console.log('PASS missing message field stops sending and reveals Instagram dialog');
+
+  await reset();const quietShare=send();
+  await page.locator('input[name="queryBox"]').waitFor();
+  assert.equal(await page.locator('[role="dialog"]').evaluate(el=>getComputedStyle(el).opacity),'0');
+  assert.equal((await quietShare).ok,true);
+  assert.equal(await page.locator('[data-inst-share-dialog]').count(),0);
+  await worker.evaluate(()=>chrome.storage.local.set({quiet:false}));
+  await reset();const visibleShare=send();
+  await page.locator('input[name="queryBox"]').waitFor();
+  assert.equal(await page.locator('[role="dialog"]').evaluate(el=>getComputedStyle(el).opacity),'1');
+  assert.equal((await visibleShare).ok,true);
+  console.log('PASS quiet mode hides sharing, cleans up, and can be disabled');
+
+  await worker.evaluate(()=>chrome.storage.local.set({favourite:'',contacts:[]}));
   await reset();assert.match((await send()).error,/Set your favourite/);
   assert.equal(await page.evaluate(()=>window.opened.length),0);
   console.log('PASS missing favourite never opens Share');
-  await worker.evaluate(()=>chrome.storage.local.set({favourite:'friend'}));
+  await worker.evaluate(()=>chrome.storage.local.set({favourite:'friend',contacts:['friend'],defaultIndex:0}));
   await reset();await page.evaluate(()=>document.querySelectorAll('article').forEach(el=>el.remove()));
   assert.match((await send()).error,/No visible reel/);
   console.log('PASS missing reel fails with actionable feedback');

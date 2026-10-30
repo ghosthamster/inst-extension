@@ -15,5 +15,11 @@
   };
   const exactUsername = (element, username) => (element.innerText || element.textContent || '')
     .split('\n').some(line => line.trim().replace(/^@/, '').toLowerCase() === username);
-  globalThis.InstCore = { normalizeUsername, exactUsername };
+  const settingsFrom = (data = {}) => {
+    const source = Array.isArray(data.contacts) ? data.contacts : [data.favourite || ''];
+    const contacts = Array.from({ length: 5 }, (_, i) => normalizeUsername(source[i] || ''));
+    const defaultIndex = Number.isInteger(data.defaultIndex) && data.defaultIndex >= 0 && data.defaultIndex < 5 ? data.defaultIndex : 0;
+    return { contacts, defaultIndex, quiet: data.quiet !== false };
+  };
+  globalThis.InstCore = { normalizeUsername, exactUsername, settingsFrom };
 })();

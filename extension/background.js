@@ -1,9 +1,12 @@
 chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (command !== 'share-to-favourite') return;
+  const slot = /^share-contact-([1-5])$/.exec(command);
+  const actions = { 'share-to-favourite': 'inst-share', 'pick-contact': 'inst-picker', 'share-with-message': 'inst-compose' };
+  const type = slot ? 'inst-share' : actions[command];
+  if (!type) return;
   try {
     if (!tab?.id) [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !/^https:\/\/(www\.)?instagram\.com\//.test(tab.url || '')) return;
-    await chrome.tabs.sendMessage(tab.id, { type: 'inst-share' });
+    await chrome.tabs.sendMessage(tab.id, slot ? { type, slot: Number(slot[1]) - 1 } : { type });
   } catch {
     // Existing tabs need a reload after installing/reloading the extension.
     await chrome.action.setBadgeText({ text: '↻' });
