@@ -2,7 +2,17 @@ const status = document.querySelector('#status');
 const share = document.querySelector('#share');
 const picker = document.querySelector('#picker');
 const compose = document.querySelector('#compose');
+const saveButton = document.querySelector('#save');
+const saveFeedback = document.querySelector('#save-feedback');
+const fields = document.querySelector('#fields');
 let saved;
+const resetSaveFeedback = () => {
+  saveButton.textContent = 'Save contacts';
+  saveButton.classList.remove('saved');
+  saveFeedback.textContent = 'Unsaved changes';
+  saveFeedback.className = '';
+};
+document.querySelector('#settings').addEventListener('input', resetSaveFeedback);
 const showError = error => { status.textContent = error.message; };
 const refresh = () => {
   const favourite = saved.contacts[saved.defaultIndex];
@@ -41,17 +51,32 @@ const refresh = () => {
 })().catch(showError);
 document.querySelector('#settings').addEventListener('submit', async event => {
   event.preventDefault();
+  saveButton.classList.remove('saved');
+  saveButton.textContent = 'Saving…';
+  saveFeedback.textContent = '';
+  saveFeedback.className = '';
+  fields.disabled = true;
   try {
     const contacts = [...document.querySelectorAll('.username')].map(el => InstCore.normalizeUsername(el.value));
     const names = contacts.filter(Boolean);
     if (new Set(names).size !== names.length) throw new Error('Each contact should appear in only one slot.');
     const defaultIndex = Number(document.querySelector('[name="default"]:checked').value);
     if (names.length && !contacts[defaultIndex]) throw new Error('Choose a filled contact slot as your default.');
-    saved = { contacts, defaultIndex, quiet: document.querySelector('#quiet').checked };
-    await chrome.storage.local.set({ ...saved, favourite: contacts[defaultIndex] });
+    const next = { contacts, defaultIndex, quiet: document.querySelector('#quiet').checked };
+    await chrome.storage.local.set({ ...next, favourite: contacts[defaultIndex] });
+    saved = next;
     document.querySelectorAll('.username').forEach((el, i) => { el.value = contacts[i]; });
     refresh(); status.textContent = names.length ? 'Contacts saved. Ready to share.' : 'Contacts cleared.';
-  } catch (error) { showError(error); }
+    saveButton.textContent = 'Saved ✓';
+    saveButton.classList.add('saved');
+    saveFeedback.textContent = names.length ? 'Your contacts and preferences are saved.' : 'All contacts cleared.';
+    saveFeedback.className = 'success';
+  } catch (error) {
+    saveButton.textContent = 'Save contacts';
+    saveFeedback.textContent = error.message;
+    saveFeedback.className = 'error';
+    showError(error);
+  } finally { fields.disabled = false; }
 });
 const act = async type => {
   try {
