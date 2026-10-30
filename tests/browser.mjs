@@ -2,10 +2,19 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
+const browserName = process.argv.includes('--browser=chrome') ? 'Chrome' : 'Brave';
+const executablePath = browserName === 'Chrome'
+  ? process.env.CHROME_PATH || chromium.executablePath()
+  : process.env.BRAVE_PATH || '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
+if (!existsSync(executablePath)) {
+  throw new Error(browserName === 'Chrome'
+    ? 'Chrome for Testing not found. Run npx playwright install chromium, or set CHROME_PATH to its executable.'
+    : 'Brave not found. Set BRAVE_PATH to its executable.');
+}
 const profile = await mkdtemp(path.join(tmpdir(), 'inst-share-test-'));
 const extension = path.resolve('extension');
-const executablePath = process.env.BRAVE_PATH || '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
 let context;
 const fixture = `<!doctype html><html><head><title>Instagram test fixture</title></head><body style="margin:0">
 <article id="offscreen" style="position:absolute;top:1800px;width:500px;height:500px"><video style="width:300px;height:400px"></video><button id="wrong-post"><svg aria-label="Share" width="20" height="20"></svg></button></article>
@@ -56,6 +65,7 @@ try {
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
     viewport: { width: 1000, height: 800 }
   });
+  console.log(`Testing ${browserName}: ${await context.browser().version()}`);
   await context.route('**/*', route => route.request().url().startsWith('https://www.instagram.com/') ? route.fulfill({ contentType: 'text/html', body: fixture }) : route.request().url().startsWith('chrome-extension://') ? route.continue() : route.abort());
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const id = new URL(worker.url()).host;
@@ -201,7 +211,7 @@ try {
   console.log('PASS missing reel fails with actionable feedback');
   const commands=await worker.evaluate(()=>chrome.commands.getAll());
   assert.ok(commands.some(c=>c.name==='share-to-favourite'&&c.shortcut));
-  console.log('PASS Brave registers the default keyboard shortcut');
+  console.log(`PASS ${browserName} registers the default keyboard shortcut`);
   assert.deepEqual(errors,[]);
   console.log('PASS no uncaught page/extension popup errors');
 } finally {

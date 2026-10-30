@@ -10,7 +10,7 @@ Save up to **five contacts**, choose a default, and press **Option + Shift + S**
 
 This is an independent, experimental project, not affiliated with Instagram or Meta. The maintainer has successfully tested the original direct-sharing flow in Brave with a real Instagram account. The newer picker, caption, and quiet-mode flows are covered by fixture tests but have not yet been confirmed against a live account. Automated tests separately cover the sharing flow using simulated Instagram pages; they do not verify live message delivery.
 
-## Install in Brave
+## Install in Chrome or Brave
 
 No build, Node.js installation, or developer account is needed to use the extension.
 
@@ -20,12 +20,12 @@ No build, Node.js installation, or developer account is needed to use the extens
    git clone https://github.com/ghosthamster/inst-extension.git
    ```
 
-2. Open `brave://extensions` and enable **Developer mode**.
+2. Open `chrome://extensions` in **Chrome**, or `brave://extensions` in **Brave**, and enable **Developer mode**.
 3. Click **Load unpacked** and select the repository’s **`extension`** folder, which contains `manifest.json`.
-4. Pin **Inst · Quick Share** using Brave’s extensions menu.
+4. Pin **Inst · Quick Share** using your browser’s extensions menu.
 5. Open Instagram, sign in normally, and reload any tabs that were open before installation.
 
-The extension is loaded locally; it is not a browser-store installation and does not update automatically. After pulling or downloading an update, click **Reload** on its card in `brave://extensions`, then reload Instagram.
+The extension is loaded locally; it is not a browser-store installation and does not update automatically. After pulling or downloading an update, click **Reload** on its card in your browser’s extensions page, then reload Instagram.
 
 ## Set your contacts
 
@@ -34,7 +34,7 @@ The extension is loaded locally; it is not a browser-store installation and does
 3. Select the radio button beside the contact you want as your default.
 4. Click **Save contacts**. Empty a slot and save to remove it; empty all slots to clear your contacts.
 
-Upgrading from version 1.0? Your existing favourite appears in slot 1 automatically. Contacts and the default apply to this Brave profile, even when you switch Instagram accounts.
+Upgrading from version 1.0? Your existing favourite appears in slot 1 automatically. Contacts and the default apply to the current browser profile, even when you switch Instagram accounts. Chrome and Brave keep separate settings: save your contacts again when switching browsers.
 
 ## Shortcuts and sharing
 
@@ -43,11 +43,11 @@ Upgrading from version 1.0? Your existing favourite appears in slot 1 automatica
 | Send to default contact | Option + Shift + S | Alt + Shift + S |
 | Open contact picker | Option + Shift + P | Alt + Shift + P |
 | Add a message | Option + Shift + M | Alt + Shift + M |
-| Send directly to slots 1–5 | Assign in Brave | Assign in Brave |
+| Send directly to slots 1–5 | Assign in browser | Assign in browser |
 
-Open `brave://extensions/shortcuts` to change keys or assign an individual key to each **contact slot**. Slot shortcuts follow the slot number when you change its username. The popup shows the actual assignments. If a default key is already taken, assign an available combination.
+Open `chrome://extensions/shortcuts` in Chrome or `brave://extensions/shortcuts` in Brave to change keys or assign an individual key to each **contact slot**. Slot shortcuts follow the slot number when you change its username. The popup shows the actual assignments. If a default key is already taken, assign an available combination.
 
-Brave/Chromium limits extensions to four suggested shortcuts, so individual contact shortcuts are initially unassigned. You can assign them manually. See the [Commands API documentation](https://developer.chrome.com/docs/extensions/reference/api/commands).
+Chromium browsers limit extensions to four suggested shortcuts, so individual contact shortcuts are initially unassigned. You can assign them manually. See the [Commands API documentation](https://developer.chrome.com/docs/extensions/reference/api/commands).
 
 **Quick picker:** open it while viewing a reel/post, then press **1–5** or click a contact to send. Empty slots are omitted. **Esc** or **Cancel** closes it without sending; Tab moves between buttons.
 
@@ -60,7 +60,7 @@ The popup also provides **Send to default**, **Choose contact**, and **Add messa
 ## Requirements and limitations
 
 - **Instagram’s interface must be in English.** The extension looks for English Share and Send labels.
-- **Brave is the tested browser**, on macOS. Other Chromium browsers and operating systems have not been verified.
+- **Chrome and Brave** use the same extension folder and package. Automated fixture tests pass in Google Chrome for Testing 149 and Brave on macOS. Live-account testing has been performed in Brave; Chrome live-account delivery and other operating systems have not been verified.
 - The most visible video’s post is preferred. An open post dialog takes priority. Keep the intended reel visible before sharing.
 - Contact matching checks full text lines in each search result, so the username can appear above or below the display name. It requires exactly one result with an exact, case-insensitive match and does not use partial matches. This is visible-text matching, not identity verification through an Instagram API; a display name identical to the saved username can also match.
 - Repeated shortcuts during an in-progress share are ignored. Already-open Share dialogs, ambiguous matches, extra selected recipients, and ambiguous or disabled Send buttons stop the operation.
@@ -83,30 +83,35 @@ The extension does not read passwords, export cookies, or store message history.
 
 | Problem | What to try |
 | --- | --- |
-| Shortcut does nothing | Check the assignment at `brave://extensions/shortcuts`, activate the Instagram tab, and reload it. |
+| Shortcut does nothing | Check the assignment on your browser’s extensions shortcuts page, activate the Instagram tab, and reload it. |
 | Reload badge (`↻`) | Reload Instagram after installing or reloading the extension. |
 | No Share button found | Open a reel/post, keep it visible, and use Instagram’s English interface. |
 | Contact not found or ambiguous | Check the exact username. Close any Share dialog before retrying. |
 | Send did not finish | Check the DM first to avoid a duplicate, then resolve any Instagram error. |
 
-When reporting a bug, include Brave’s version, operating system, Instagram interface language, and the error message. Remove usernames, DM content, cookies, and other personal details from screenshots or logs.
+When reporting a bug, include your browser name and version, operating system, Instagram interface language, and the error message. Remove usernames, DM content, cookies, and other personal details from screenshots or logs.
 
 ## Development
 
-Prerequisites: **Node.js 20+**, npm, an installed Brave browser, and **Python 3** for ZIP packaging.
+Prerequisites: **Node.js 20+**, npm, Brave and/or Chrome for Testing, and **Python 3** for ZIP packaging.
 
 ```sh
 npm ci
 npm test
-npm run test:browser
+npm run test:browser   # Brave
+npx playwright install chromium
+npm run test:chrome    # Playwright’s Chrome for Testing build
 npm run package
 ```
 
-The browser suite defaults to Brave’s standard macOS installation path. On another installation, point `BRAVE_PATH` at its executable:
+The Brave suite defaults to its standard macOS installation path. The Chrome suite defaults to the browser installed by Playwright. Override either executable when needed:
 
 ```sh
 BRAVE_PATH="/path/to/brave" npm run test:browser
+CHROME_PATH="/path/to/Google Chrome for Testing" npm run test:chrome
 ```
+
+Use **Chrome for Testing** for automated extension tests: regular Chrome removed the `--load-extension` automation flag, while manual **Load unpacked** installation remains supported. See [Chrome’s announcement](https://groups.google.com/a/chromium.org/g/chromium-extensions/c/1-g8EFx2BBY).
 
 Tests use a temporary browser profile and intercept Instagram page requests with local fixtures. They cover username parsing, shortcut dispatch, legacy settings, multiple contacts, shortcut routing, picker cancellation, optional messages, quiet-mode recovery, reel selection, and failure conditions without using your real login or sending real DMs. They verify shortcut registration and message dispatch, not a physical operating-system keypress.
 
@@ -115,7 +120,7 @@ Packaging creates `dist/inst-quick-share.zip` with `manifest.json` at its root. 
 ```text
 extension/           Manifest, service worker, content script, and popup
 scripts/package.py   Runtime-only ZIP packaging
-tests/               Unit tests and isolated Brave integration tests
+tests/               Unit tests and isolated Chrome/Brave integration tests
 ```
 
 `private: true` in `package.json` prevents accidental npm publication; it does not control the GitHub repository’s visibility.
