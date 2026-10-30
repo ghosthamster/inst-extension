@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Inst · Quick Share",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Send the reel or post you are viewing to one saved Instagram contact with a keyboard shortcut.",
   "permissions": [
     "storage",

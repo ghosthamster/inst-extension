@@ -44,7 +44,7 @@ To change the shortcut, open `brave://extensions/shortcuts`. If another extensio
 - **Instagram’s interface must be in English.** The extension looks for English Share and Send labels.
 - **Brave is the tested browser**, on macOS. Other Chromium browsers and operating systems have not been verified.
 - The most visible video’s post is preferred. An open post dialog takes priority. Keep the intended reel visible before sharing.
-- Contact matching expects Instagram search results to show the username on the first nonempty text line. It requires one exact, case-insensitive match; it does not use partial matches. This is DOM-based matching, not verification through an Instagram API.
+- Contact matching checks full text lines in each search result, so the username can appear above or below the display name. It requires exactly one result with an exact, case-insensitive match and does not use partial matches. This is visible-text matching, not identity verification through an Instagram API; a display name identical to the saved username can also match.
 - Repeated shortcuts during an in-progress share are ignored. Already-open Share dialogs, ambiguous matches, extra selected recipients, and ambiguous or disabled Send buttons stop the operation.
 - The extension considers the Share dialog closing after Send to be completion. It does not verify delivery in the recipient’s inbox. If completion is uncertain, **check your DM before retrying**; sending is never automatically retried.
 - Instagram can change its page structure and break this integration. Login challenges, account restrictions, and Instagram errors must be handled on Instagram itself.

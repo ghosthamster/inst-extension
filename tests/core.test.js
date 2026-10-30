@@ -9,9 +9,10 @@ test('accepts usernames, @names and real Instagram profile URLs', () => {
 test('rejects deceptive hosts, posts and malformed usernames', () => {
   for (const value of ['https://evilinstagram.com/user', 'https://instagram.com.evil.test/user', 'https://instagram.com/p/123/', 'a b', '@@user', '<script>', 'a'.repeat(31)]) assert.throws(() => normalizeUsername(value));
 });
-test('recipient matching requires the username on the first nonempty line', () => {
+test('recipient matching accepts an exact username on either result line', () => {
   assert.equal(exactUsername({ innerText: 'Some.One\nDisplay Name' }, 'some.one'), true);
-  assert.equal(exactUsername({ innerText: 'some.one.fake\nsome.one' }, 'some.one'), false);
+  assert.equal(exactUsername({ innerText: 'Display Name\nsome.one' }, 'some.one'), true);
+  assert.equal(exactUsername({ innerText: 'Display Name\nsome.one.fake' }, 'some.one'), false);
   assert.equal(exactUsername({ innerText: '\n  @Some.One \nDisplay Name' }, 'some.one'), true);
   assert.equal(exactUsername({ innerText: '' }, 'some.one'), false);
 });

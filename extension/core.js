@@ -14,6 +14,6 @@
     return name;
   };
   const exactUsername = (element, username) => (element.innerText || element.textContent || '')
-    .split('\n').map(line => line.trim()).filter(Boolean)[0]?.replace(/^@/, '').toLowerCase() === username;
+    .split('\n').some(line => line.trim().replace(/^@/, '').toLowerCase() === username);
   globalThis.InstCore = { normalizeUsername, exactUsername };
 })();

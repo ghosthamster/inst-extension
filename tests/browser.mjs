@@ -24,6 +24,12 @@ for(const b of document.querySelectorAll('article button')) b.onclick=()=>{
  results.innerHTML='';
  for (const name of names) {
   const option=document.createElement('div');option.setAttribute('role','option');option.textContent=name;
+  if(window.mode==='name-first'){
+   option.textContent='';
+   const display=document.createElement('div');display.textContent='Display Name';
+   const username=document.createElement('div');username.textContent=name;
+   option.append(display,username);
+  }
   results.append(option);
   option.onclick=()=>{
    option.setAttribute('aria-selected','true');
@@ -70,6 +76,11 @@ try {
   const result=await send();assert.equal(result.ok,true,JSON.stringify(result));
   assert.deepEqual(await page.evaluate(()=>window.sent),[{post:'correct-post',username:'friend'}]);
   console.log('PASS real extension message → visible reel → exact contact → Send');
+  await reset('name-first');
+  const nameFirstResult=await send();
+  assert.equal(nameFirstResult.ok,true,JSON.stringify(nameFirstResult));
+  assert.deepEqual(await page.evaluate(()=>window.sent),[{post:'correct-post',username:'friend'}]);
+  console.log('PASS username below display name is found and shared');
   await reset();
   await page.evaluate(()=>{document.querySelector('#offscreen').style.top='520px';document.querySelector('#offscreen video').style.height='100px';});
   assert.equal((await send()).ok,true);
