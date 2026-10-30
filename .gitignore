@@ -1,0 +1,14 @@
+node_modules/
+dist/
+test-results/
+.DS_Store
+
+# Local credentials, browser profiles and debug artifacts
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+playwright-report/
+.auth/

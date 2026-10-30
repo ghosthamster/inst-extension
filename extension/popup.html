@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inst · Quick Share</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+<header><span class="mark">↗</span><div><h1>Quick Share</h1><p>One person. One shortcut.</p></div></header>
+<form id="settings"><label for="favourite">Your favourite on Instagram</label><div class="field"><span>@</span><input id="favourite" disabled autocomplete="off" spellcheck="false" placeholder="username" aria-describedby="hint"></div><p id="hint">Username or Instagram profile link.</p><button type="submit" id="save" disabled>Save favourite</button></form>
+<section><button id="share" class="primary" disabled>Send current reel / post</button><p class="shortcut">Or press <kbd id="shortcut">Alt + Shift + S</kbd> on Instagram.</p><p class="note">Sends immediately to your saved contact.</p></section>
+<p id="status" role="status" aria-live="polite"></p>
+<footer><button id="shortcuts" class="link">Change shortcut</button><a href="https://www.instagram.com/reels/" target="_blank" rel="noreferrer">Open Reels ↗</a></footer>
+<script src="core.js"></script><script src="popup.js"></script>
+</body></html>

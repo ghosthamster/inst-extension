@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Inst \u00b7 Quick Share",
+  "version": "1.0.0",
+  "description": "Send the reel or post you are viewing to one saved Instagram contact with a keyboard shortcut.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Inst \u00b7 Quick Share"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.instagram.com/*",
+        "https://instagram.com/*"
+      ],
+      "js": [
+        "core.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "share-to-favourite": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Immediately send the current reel/post to your favourite"
+    }
+  }
+}
